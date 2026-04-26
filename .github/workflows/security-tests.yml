@@ -1,0 +1,122 @@
+name: Security Tests — Projeto 1 VPC
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'projeto-01-vpc-segura/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'projeto-01-vpc-segura/**'
+  # Roda diariamente para detectar drift de configuração
+  schedule:
+    - cron: '0 8 * * *'
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: '1.7.0'
+  WORKING_DIR: './projeto-01-vpc-segura/terraform'
+
+jobs:
+  # ── Job 1: Validação estática do Terraform ─────────────
+  terraform-validate:
+    name: Terraform Validate & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform validate
+
+  # ── Job 2: Análise de segurança estática ──────────────
+  security-scan:
+    name: Security Scan (tfsec + checkov)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: ${{ env.WORKING_DIR }}
+          soft_fail: false
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: ${{ env.WORKING_DIR }}
+          framework: terraform
+          output_format: cli,sarif
+          output_file_path: console,results.sarif
+          soft_fail: false
+
+      - name: Upload SARIF results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: results.sarif
+
+  # ── Job 3: Testes de segurança na infraestrutura real ─
+  security-tests:
+    name: Run Security Tests (pytest)
+    runs-on: ubuntu-latest
+    needs: [terraform-validate, security-scan]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        working-directory: ./projeto-01-vpc-segura
+        run: |
+          pip install pytest boto3 pytest-html
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run security tests
+        working-directory: ./projeto-01-vpc-segura
+        env:
+          VPC_ID: ${{ secrets.VPC_ID }}
+          BASTION_SG_ID: ${{ secrets.BASTION_SG_ID }}
+          PRIVATE_SG_ID: ${{ secrets.PRIVATE_SG_ID }}
+          EXPECTED_VPC_CIDR: '10.0.0.0/16'
+        run: |
+          pytest tests/ -v \
+            --html=reports/security-report.html \
+            --self-contained-html \
+            --tb=short
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-test-report
+          path: ./projeto-01-vpc-segura/reports/
+          retention-days: 30

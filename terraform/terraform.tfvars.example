@@ -1,0 +1,20 @@
+###############################################################
+# terraform.tfvars.example
+# Copy to terraform.tfvars and adjust the values
+# NEVER commit terraform.tfvars with real data to Git
+###############################################################
+
+aws_region   = "us-east-1"
+project_name = "devsecops-p1"
+environment  = "lab"
+owner        = "your-name-here"
+
+vpc_cidr = "10.0.0.0/16"
+
+# Leave empty to auto-detect your current IP
+# Or set explicitly:
+# allowed_ssh_cidrs = ["203.0.113.10/32"]
+allowed_ssh_cidrs = []
+
+bastion_instance_type = "t3.micro"
+app_instance_type     = "t3.micro"
