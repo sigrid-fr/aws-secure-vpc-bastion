@@ -1,7 +1,6 @@
 ###############################################################
-# Project 1 — Secure VPC with Bastion Host
-# DevSecOps Portfolio | QA → DevSecOps Transition
-# Author: [your name]
+# Secure VPC with Bastion Host
+# Author: Sigrid
 ###############################################################
 
 terraform {

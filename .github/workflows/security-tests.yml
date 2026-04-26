@@ -1,15 +1,15 @@
-name: Security Tests — Projeto 1 VPC
+name: Security Tests — VPC
 
 on:
   push:
     branches: [main, develop]
     paths:
-      - 'projeto-01-vpc-segura/**'
+      - 'secure-vpc/**'
   pull_request:
     branches: [main]
     paths:
-      - 'projeto-01-vpc-segura/**'
-  # Roda diariamente para detectar drift de configuração
+      - 'secure-vpc/**'
+  # Run daily to detect configuration drift
   schedule:
     - cron: '0 8 * * *'
 
@@ -19,7 +19,7 @@ env:
   WORKING_DIR: './projeto-01-vpc-segura/terraform'
 
 jobs:
-  # ── Job 1: Validação estática do Terraform ─────────────
+  # ── Job 1: Static validation of Terraform ─────────────
   terraform-validate:
     name: Terraform Validate & Lint
     runs-on: ubuntu-latest
@@ -44,7 +44,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         run: terraform validate
 
-  # ── Job 2: Análise de segurança estática ──────────────
+  # ── Job 2: Static security analysis ──────────────
   security-scan:
     name: Security Scan (tfsec + checkov)
     runs-on: ubuntu-latest
@@ -73,7 +73,7 @@ jobs:
         with:
           sarif_file: results.sarif
 
-  # ── Job 3: Testes de segurança na infraestrutura real ─
+  # ── Job 3: Security testing in real-world infrastructure ─
   security-tests:
     name: Run Security Tests (pytest)
     runs-on: ubuntu-latest

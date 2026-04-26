@@ -1,5 +1,5 @@
 """
-Project 1 — Automated Network Security Tests
+Automated Network Security Tests 
 =============================================
 QA background applied to infrastructure:
 Validates that security groups and the network topology
